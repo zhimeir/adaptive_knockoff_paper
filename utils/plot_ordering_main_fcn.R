@@ -1,0 +1,5 @@
+res = adaptiveKnockoff::filter_EM_getorder(W,z,alpha = 0.2,offset=1,mute = FALSE,df=2)
+plot_ordering(res,nonzero = nonzero,start_index = 650)
+ggsave(paste0("~/Dropbox/Adaptive Knockoff Paper/plots/adaordering1.pdf"),plot = last_plot(),width = 10,height = 4)
+plot_vanilla(W,nonzero = nonzero,start_index = 650,alpha=0.2)
+ggsave(paste0("~/Dropbox/Adaptive Knockoff Paper/plots/vordering1.pdf"),plot = last_plot(),width = 10,height = 4)
