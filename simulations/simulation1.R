@@ -1,5 +1,46 @@
+#!/usr/bin/env Rscript
+
+## Start of problem independent section
+args <- commandArgs(trailingOnly = TRUE)
+ParamsRowIndex <- as.integer(args[1])
+if(is.na(ParamsRowIndex)==1){
+  ParamsRowIndex = 1 
+}
 ####################################
-## Parameters
+## Libraries and sources
+####################################
+library("adaptMT")
+library("splines")
+library("knockoff")
+library("SNPknock")
+library("dplyr")
+library("corpcor")
+library("glmnet")
+library("MASS")
+library("R.matlab")
+library("gam")
+library("SNPknock")
+library("randomForest")
+library("devtools")
+library("RCurl")
+library("ggplot2")
+library("httr")
+library("mgcv")
+source("https://www.stat.uchicago.edu/~rina/sabha/All_q_est_functions.R")
+source('https://www.stat.uchicago.edu/~rina/accumulationtests/accumulation_test_functions.R')
+
+source_gitfile <- function(filename){
+  url = paste0("https://raw.githubusercontent.com/zhimeir/adaptive_knockoff_paper/master/",filename,".R")
+  script = GET(url = url,authenticate("1105343890ba2690dd0ee046fe5f5be604e34ffd",""))
+  script = content(script,"text")
+  eval(parse(text = script),envir= .GlobalEnv)
+}
+
+file_vec <- c("utils/all_other_methods","R/adaptive_knockoff","R/filter_EM","R/filter_gam","R/filter_glm","R/filter_randomForest")
+getfile <- sapply(file_vec,source_gitfile)
+
+####################################
+## generating model
 ####################################
 set.seed(24601)
 n = 1000
@@ -16,13 +57,13 @@ sigprob[1:300] = 1/(1:300)^2/(sum(1/(1:300)^2))
 nonzero = sample(1:p,k,prob = sigprob)
 beta0 = amp * (1:p %in% nonzero)*sign(rnorm(p)) / sqrt(n)
 y.sample = function(X) X%*%beta0+rnorm(n,0,1)
-#settingName = paste0(".//scratch/users/zren/adaptiveKnockoff/results/",settingName)
-settingName = paste0("./results/",settingName)
+settingName = "./results/simulation1"
 
 ####################################
-## Simulations
+## HMM parameters
 ####################################
-K=5;M=3;  # Number of possible states for each variable
+# Number of possible states for each variable
+K=5;M=3;  
 # Marginal distribution for the first variable
 pInit = rep(1/K,K)
 # Create p-1 transition matrices
@@ -30,7 +71,6 @@ Q = array(stats::runif((p-1)*K*K),c(p-1,K,K))
 for(j in 1:(p-1)) { Q[j,,] = Q[j,,] / rowSums(Q[j,,]) }
 pEmit = array(stats::runif(p*M*K),c(p,M,K))
 for(j in 1:p) { pEmit[j,,] = pEmit[j,,] / rowSums(pEmit[j,,]) }
-
 
 
 ####################################
@@ -43,14 +83,9 @@ y = y.sample(X)
 ####################################
 ## Computing p values
 ####################################
-#mdl = glm(y~X,family = binomial)
 mdl = lm(y~X)
-#mdl = SSLasso(X,y)
-#pvals = mdl$pvals
 pvals = summary(mdl)$coefficients[-1,4] 
-#hist(pvals[-nonzero])
-#hist(pvals)
-#plot(-log(pvals))
+
 ####################################
 ## BHq
 ####################################
@@ -67,7 +102,7 @@ writeMat(savedir, power = power, fdp = fdp,nonzero = nonzero)
 ####################################
 ## Storey method
 ####################################
-thr = 0.5 #(as in Rina and Li)
+thr = 0.5 #as in Rina and Li
 fdp = c()
 power = c()
 for(i in 1:length(alphalist)){
@@ -81,7 +116,7 @@ writeMat(savedir, power = power, fdp = fdp,nonzero = nonzero)
 ####################################
 ## SABHA method
 ####################################
-tau = 0.5;eps = 0.1;#as in Rina and Li
+tau = 0.5;eps = 0.1; #as in Rina and Li
 qhat = Solve_q_step(pvals,tau,eps)
 fdp = c()
 power = c()
@@ -115,7 +150,7 @@ writeMat(savedir, power = power, fdp = fdp,nonzero = nonzero)
 ## AdaPT
 ####################################
 z <-1:p
-pi.formulas <- paste0("ns(z, df = ", 6:10, ")")
+pi.formulas <- paste0("ns(z, df = ", 6:10, ")") # as in Lei and Fithian
 mu.formulas <- paste0("ns(z, df = ", 6:10, ")")
 res <- adapt_gam(x = data.frame(z), pvals = pvals, pi_formulas = pi.formulas, mu_formulas = mu.formulas,alpha = alphalist)
 
@@ -146,7 +181,6 @@ T_tilde = abs(beta[(p+1):(2*p)])
 T_max = pmax(T,T_tilde)
 W = T-T_tilde
 
-
 fdp = c()
 power = c()
 for (i in alphalist ){
@@ -161,7 +195,7 @@ writeMat(savedir, power = power, fdp = fdp,W = W,nonzero = nonzero)
 ####################################
 ## Adaknockoff with glm
 ####################################
-res = adaptiveKnockoff::filter_glm(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
+res = filter_glm(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
@@ -184,7 +218,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with gam
 ####################################
-res = adaptiveKnockoff::filter_gam(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
+res = filter_gam(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
@@ -208,7 +242,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with random forest
 ####################################
-res = adaptiveKnockoff::filter_randomForest(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
+res = filter_randomForest(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
@@ -230,8 +264,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with EM algorithm
 ####################################
-#res = adaknockoff_EM(W,z,alpha =alphalist,offset=1,df = 3)
-res =adaptiveKnockoff::filter_EM(W,z,alpha =alphalist,offset=1,df = 2)
+res =filter_EM(W,z,alpha =alphalist,offset=1,df = 2)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist )){
@@ -245,7 +278,6 @@ for (i in 1:length(alphalist )){
     power = c(power,0)
   }
 }
-
 
 savedir = paste(settingName,'/adakn_em',as.character(ParamsRowIndex),'.mat',sep = "")
 writeMat(savedir,fdp = fdp,power = power)
