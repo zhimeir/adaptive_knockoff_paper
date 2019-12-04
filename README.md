@@ -1,2 +1,2 @@
 # adaptive_knockoff_paper
-This is a repository for exactly reproducing the simulation results in the 
+This is a repository for exactly reproducing the simulation results in the adaptive knockoff paper. The scripts `simulaition1.R` and 'simulation2.R' in the `R`folder reproduce one realization of the the simulations in Section 5.2 and Section 5.3 respectively. One can run the Rscripts in a personal computer. In the paper the 
