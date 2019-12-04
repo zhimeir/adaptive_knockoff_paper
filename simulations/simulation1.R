@@ -31,7 +31,7 @@ source('https://www.stat.uchicago.edu/~rina/accumulationtests/accumulation_test_
 
 source_gitfile <- function(filename){
   url = paste0("https://raw.githubusercontent.com/zhimeir/adaptive_knockoff_paper/master/",filename,".R")
-  script = GET(url = url,authenticate("1105343890ba2690dd0ee046fe5f5be604e34ffd",""))
+  script = GET(url = url)
   script = content(script,"text")
   eval(parse(text = script),envir= .GlobalEnv)
 }
