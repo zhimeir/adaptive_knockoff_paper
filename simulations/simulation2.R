@@ -1,5 +1,4 @@
 #!/usr/bin/env Rscript
-
 ## Start of problem independent section
 args <- commandArgs(trailingOnly = TRUE)
 ParamsRowIndex <- as.integer(args[1])
@@ -26,12 +25,15 @@ library("RCurl")
 library("ggplot2")
 library("httr")
 library("mgcv")
+library("flare")
+library("expm")
+library("rsit")
 source("https://www.stat.uchicago.edu/~rina/sabha/All_q_est_functions.R")
 source('https://www.stat.uchicago.edu/~rina/accumulationtests/accumulation_test_functions.R')
 
 source_gitfile <- function(filename){
   url = paste0("https://raw.githubusercontent.com/zhimeir/adaptive_knockoff_paper/master/",filename,".R")
-  script = GET(url = url,authenticate("1105343890ba2690dd0ee046fe5f5be604e34ffd",""))
+  script = GET(url = url)
   script = content(script,"text")
   eval(parse(text = script),envir= .GlobalEnv)
 }
@@ -178,7 +180,6 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with EM algorithm
 ####################################
-#res = adaknockoff_EM(W,z,alpha =alphalist,offset=1,s0=0.01,mute = FALSE)
 res = filter_EM(W,z,alpha =alphalist,offset=1,s0=0.01,df=2,cutoff = 100)
 fdp = c()
 power = c()

@@ -66,6 +66,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 
   #Extract dimensionality
   p = length(W)
+  
   #check if z is in the correct form
   if(dim(U)[1]!=p){
     if(dim(U)[2]==p){
@@ -75,28 +76,27 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       stop('Please check the dimensionality of the side information!')
     }
   }
+  #dimention of the side information
   pz = dim(U)[2]
-  all_id = 1:p
-  tau.sel = c()
-
+  
 
   # Initializing the output
-  rejs = vector("list",length(alpha))
-  nrejs =  rep(0,length(alpha))
-  ordered_alpha = sort(alpha,decreasing = TRUE)
+  all_id = 1:p
+  tau.sel = c() #stopping time
+  rejs = vector("list",length(alpha)) #rejection sets
+  nrejs =  rep(0,length(alpha)) #number of rejections
+  ordered_alpha = sort(alpha,decreasing = TRUE) #ordered target levels: from largest to the smallest
   rej.path = c()
   index.rank = rep(0,p)
 
   # Algorithm initialization
+  eps = 1e-10
   W_abs = abs(W)
   W_revealed = W_abs
 
-
-  # Revealing a small amount of signs based on magnitude only
+  # Reveal a small amount of signs based on magnitude only
   tau = rep(s0,p)
-
   revealed_id = which(W_abs<=tau)
-
 
   if (length(revealed_id)>0)
   {unrevealed_id =all_id[-revealed_id]
@@ -116,7 +116,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
   mu_1[W==0] = log(2)
   mu_0[W==0] = log(2)
 
-  H = rep(1e-10,p)
+  H = rep(eps,p)
   y0 = -log(t)
   y1 = -log(t)
   count = 0
@@ -135,15 +135,16 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 
         # unrevealed part
         H[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) prob_unrevealed(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
-        H = pmax(H,1e-10)
-        H = pmin(H,1-1e-10)
+        # To avoid numerical errors
+        H = pmax(H,eps)
+        H = pmin(H,1-eps)
         y1[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) exp_unrevealed_1(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))/H[unrevealed_id]
         y0[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) exp_unrevealed_0(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))/(1-H[unrevealed_id])
-
-
+        
         # M step
         if(is.null(cutoff) == TRUE){cutoff=p}
         if(length(unrevealed_id)<cutoff){
+          #update nu
           if(dim(U)[2] ==1){
             mdl = gam(log(H/(1-H))~ns(U,df))
             pi = logis(mdl$fitted.values)
@@ -151,12 +152,15 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
             mdl = gam(log(H/(1-H))~s(U[,1],U[,2]))
             pi = logis(mdl$fitted.values)
           }
+          
+          #update beta_0
           if(dim(U)[2]==1){mdl =gam(y0[t!=1/2]~ns(U[t!=1/2],df),weights = (1-H[t!=1/2]),family = Gamma(link = "log"))
           }else{
             mdl =gam(y0[t!=1/2]~s(U[t!=1/2,1],U[t!=1/2,2]),weights = (1-H[t!=1/2]),family = Gamma(link = "log"))
           }
           mu_0[t!=1/2] =mdl$fitted.values
 
+          #update beta_1
           if(dim(U)[2]==1){mdl =gam(y1[t!=1/2]~ns(U[t!=1/2],df),weights = (H[t!=1/2]),family = Gamma(link = "log"))
           }else{
             mdl =gam(y1[t!=1/2]~s(U[t!=1/2,1],U[t!=1/2,2]),weights = (H[t!=1/2]),family = Gamma(link = "log"))
@@ -170,17 +174,14 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
           mdl = randomForest(y = y1[t!=1/2],x= as.matrix(U[t!=1/2,]))
           mu_1[t!=1/2] =mdl$predicted
         }
-
+        
+        #update delta
         delta0 = sum((1-H)*(t==1/2))/(sum((1-H)*(t==1/2))+sum((1-H)*(t!=1/2)))
         delta1 = sum((H)*(t==1/2))/(sum((H)*(t==1/2))+sum((H)*(t!=1/2)))
       }
 
 
       horder = sapply(1:length(unrevealed_id),function(j) order_prob(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
-      #ploth = rep(0,p)
-      #ploth[unrevealed_id] = sign(W[unrevealed_id])*horder
-      #plot(ploth)
-
       ind.min = which(horder == min(horder))
       if(length(ind.min)==1){
         ind.reveal = ind.min
@@ -219,7 +220,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 }
 
 
-## Auxiliary funcitons
+## Utility funcitons
 calculate.fdphat = function(W,tau,offset = 1){
   p = length(W)
   fdphat = (offset+sum(W<=-tau))/sum(W>=tau)
