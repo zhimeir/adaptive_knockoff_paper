@@ -27,7 +27,7 @@ library("httr")
 library("mgcv")
 library("flare")
 library("expm")
-#library("rsit")
+library("rdist")
 source("https://www.stat.uchicago.edu/~rina/sabha/All_q_est_functions.R")
 source('https://www.stat.uchicago.edu/~rina/accumulationtests/accumulation_test_functions.R')
 
