@@ -1,50 +1,3 @@
-#' Adaptive knockoff filter based on Bayeian two group model
-#'
-#' filter_EM takes the inmportance statistic W as input. The filter determines the order of the statistic by the Bayesian posterior probability of being a null.
-#'
-#' @param W vector of length p, denoting the imporatence statistics calculated by \code{\link[knockoff]{knockoff.filter}}.
-#' @param U p-by-r matrix of side information.
-#' @param alpha target FDR level (default is 0.1).
-#' @param reveal_prop The proportion of hypotheses revealed at intialization (default is 0.4).
-#' @param mute whether \eqn{\hat{fdp}} of each iteration is printed (defalt is TRUE).
-#' @param df Degree of freedom of the splines (default is 3).
-#' @param R Number of iterations in the EM algorithm
-#'
-#' @return A list of the following:
-#'  \item{nrejs}{The number of rejections for each specified target fdr (alpha) level}
-#'  \item{rejs}{Rejsction set fot each specified target fdr (alpha) level}
-#'  \item{rej.path}{The order of the hypotheses (used for diagnostics)}
-#'  \item{unrevealed.id}{id of the hypotheses that are nor revealed in the end (used for diagnostics)}
-#'  \item{tau}{Threshold of each target FDR level (used for diagnostics)}
-#'  \item{acc}{The accuracy of classfication at each step (used for diagnostics)}
-#'
-#'
-#'
-#' @family filter
-#'
-#' @examples
-#' #Generating data
-#' p=100;n=100;k=40;
-#' mu = rep(0,p); Sigma = diag(p)
-#' X = matrix(rnorm(n*p),n)
-#' nonzero = 1:k
-#' beta = 5*(1:p%in%nonzero)*sign(rnorm(p))/ sqrt(n)
-#' y = X%*%beta + rnorm(n,1)
-#'
-#' #Generate knockoff copy
-#' Xk = create.gaussian(X,mu,Sigma)
-#'
-#' #Generate importance statistic using knockoff package
-#' W = stat.glmnet_coefdiff(X,Xk,y)
-#'
-#' #Using filer_EM to obtain the final rejeciton set
-#' U = 1:p #Use the location of the hypotheses as the side information
-#' result = filter_EM(W,U)
-#'
-#' @export
-
-
-
 filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-3,cutoff = NULL){
   #Check the input format
   if(is.numeric(W)){
@@ -59,11 +12,6 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
     stop('U is not numeric')
   }
 
-  #if(is.numeric(reveal_prop)==0) stop('reveal_prop should be a numeric.')
-  #if(reveal_prop>1) stop('reveal_prop should be a numeric between 0 and 1')
-  #if(reveal_prop<0) stop('reveal_prop should be a numeric between 0 and 1')
-
-
   #Extract dimensionality
   p = length(W)
   
@@ -76,33 +24,31 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       stop('Please check the dimensionality of the side information!')
     }
   }
-  #dimention of the side information
+  
+  # dimention of the side information
   pz = dim(U)[2]
   
-
   # Initializing the output
   all_id = 1:p
   tau.sel = c() #stopping time
   rejs = vector("list",length(alpha)) #rejection sets
   nrejs =  rep(0,length(alpha)) #number of rejections
-  ordered_alpha = sort(alpha,decreasing = TRUE) #ordered target levels: from largest to the smallest
+  ordered_alpha = sort(alpha,decreasing = TRUE) #ordered target levels: from the largest to the smallest
   rej.path = c()
-  index.rank = rep(0,p)
+
 
   # Algorithm initialization
   eps = 1e-10
   W_abs = abs(W)
   W_revealed = W_abs
-
-  # Reveal a small amount of signs based on magnitude only
-  tau = rep(s0,p)
+  tau = rep(s0,p)# Reveal a small amount of signs based on magnitude only
   revealed_id = which(W_abs<=tau)
 
   if (length(revealed_id)>0)
   {unrevealed_id =all_id[-revealed_id]
   W_revealed[revealed_id] = W[revealed_id]
   rej.path = c(rej.path,revealed_id)
-  index.rank[revealed_id] = 1
+  
   }else{
     unrevealed_id = all_id
   }
@@ -115,14 +61,11 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
   mu_1 = rep(-log(logis(mean(W_abs[W>0]))),p)
   mu_1[W==0] = log(2)
   mu_0[W==0] = log(2)
-
   H = rep(eps,p)
   y0 = -log(t)
   y1 = -log(t)
-  count = 0
 
   for (talpha in 1:length(alpha)){
-
     fdr = ordered_alpha[talpha]
     for (i in 1:length(unrevealed_id)){
       # EM algorithm
@@ -135,9 +78,8 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 
         # unrevealed part
         H[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) prob_unrevealed(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
-        # To avoid numerical errors
-        H = pmax(H,eps)
-        H = pmin(H,1-eps)
+        H = pmax(H,eps) #avoid numerical errors
+        H = pmin(H,1-eps) #avoid numerical errors
         y1[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) exp_unrevealed_1(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))/H[unrevealed_id]
         y0[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) exp_unrevealed_0(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))/(1-H[unrevealed_id])
         
@@ -190,7 +132,6 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       }
 
       ind.reveal = unrevealed_id[ind.reveal]
-      index.rank[ind.reveal] = length(revealed_id)+1
       revealed_id = c(revealed_id,ind.reveal)
       unrevealed_id = all_id[-revealed_id]
       rej.path = c(rej.path,ind.reveal)
@@ -214,8 +155,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 
   }
 
-  index.rank[unrevealed_id] = length(revealed_id)+1
-  result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,W=W,index.rank = index.rank)
+  result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,W=W)
   return(result)
 }
 
@@ -223,7 +163,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
 ## Utility funcitons
 calculate.fdphat = function(W,tau,offset = 1){
   p = length(W)
-  fdphat = (offset+sum(W<=-tau))/sum(W>=tau)
+  fdphat = (offset+sum(W<=-tau))/max(sum(W>=tau),1)
   return(fdphat)
 }
 

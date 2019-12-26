@@ -1,50 +1,4 @@
-#' Adaptive knockoff filter based on GAM (Generalized Additive Model)
-#'
-#' filter_gam takes the inmportance statistic W as input. The filter determines the order of the statistic by the probability of being a null. The probability is given by GAM.
-#'
-#' @param W vector of length p, denoting the imporatence statistics calculated by \code{\link[knockoff]{knockoff.filter}}.
-#' @param z p-by-r matrix of side information.
-#' @param df Degree of freedom of the splines (default is 5).
-#' @param alpha target FDR level (default is 0.1).
-#' @param reveal_prop The proportion of hypotheses revealed at intialization (default is 0.5).
-#' @param mute whether \eqn{\hat{fdp}} of each iteration is printed (defalt is TRUE).
-#'
-#' @return A list of the following:
-#'  \item{nrejs}{The number of rejections for each specified target fdr (alpha) level}
-#'  \item{rejs}{Rejsction set fot each specified target fdr (alpha) level}
-#'  \item{rej.path}{The order of the hypotheses (used for diagnostics)}
-#'  \item{unrevealed.id}{id of the hypotheses that are nor revealed in the end (used for diagnostics)}
-#'  \item{tau}{Threshold of each target FDR level (used for diagnostics)}
-#'  \item{acc}{The accuracy of classfication at each step (used for diagnostics)}
-#'
-#'
-#'
-#' @family filter
-#'
-#' @examples
-#' #Generating data
-#' p=100;n=100;k=40;
-#' mu = rep(0,p); Sigma = diag(p)
-#' X = matrix(rnorm(n*p),n)
-#' nonzero = 1:k
-#' beta = 5*(1:p%in%nonzero)*sign(rnorm(p))/ sqrt(n)
-#' y = X%*%beta + rnorm(n,1)
-#'
-#' #Generate knockoff copy
-#' Xk = create.gaussian(X,mu,Sigma)
-#'
-#' #Generate importance statistic using knockoff package
-#' W = stat.glmnet_coefdiff(X,Xk,y)
-#'
-#' #Using filer_gam to obtain the final rejeciton set
-#' z = 1:p #Use the location of the hypotheses as the side information
-#' result = filter_gam(W,z)
-#'
-#' @export
-
-
 filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
-
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
@@ -65,6 +19,7 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
 
   #Extract dimensionality
   p = length(W)
+  
   #check if z is in the correct form
   if(dim(z)[1]!=p){
     if(dim(z)[2]==p){
@@ -75,11 +30,11 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
     }
   }
   pz = dim(z)[2]
-
+  
   #Initilization
-  tau = rep(0,p)
   rejs = list()
   nrejs = rep(0,length(alpha))
+  tau = rep(0,p)
   ordered_alpha = sort(alpha,decreasing = TRUE)
   rej.path = c()
   W_abs = abs(W)
@@ -87,9 +42,7 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
   revealed_sign = rep(1,p)
   all_id = 1:p
   tau.sel = c()
-  acc = c()
-
-
+  
   #Reveal a small proportion of W
   revealed_id = which(W_abs<=quantile(W_abs,reveal_prop))
 
@@ -101,20 +54,15 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
 
   #Iteratively reveal hypotheses; the order determined by glmnet
   for (talpha in 1:length(alpha)){
-
     fdr = ordered_alpha[talpha]
-
     for (i in 1:length(unrevealed_id)){
       if(dim(z)[2]==1){
         mdl  =gam(revealed_sign~ns(z,df) + abs(W),family = "binomial")
       }else{
         mdl  =gam(revealed_sign~z + abs(W),family = "binomial")
       }
-      fitted.pval = mdl$fitted.values
-      fitted.pval = fitted.pval[unrevealed_id]
-      predicted.sign = fitted.pval>0.5
-      acc = c(acc, sum(predicted.sign == W_sign[unrevealed_id])/length(unrevealed_id))
-
+      fitted.pval = mdl$fitted.values[unrevealed_id]
+      
       #Reveal the W_j with smallest probability of being a positive
       ind.min = which(fitted.pval == min(fitted.pval))
       if(length(ind.min)==1){
@@ -130,7 +78,7 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
       revealed_sign[ind.reveal] = W_sign[ind.reveal]
       tau[ind.reveal] =  W_abs[ind.reveal]+1
       fdphat = calculate.fdphat(W,tau,offset = offset)
-      if (mute == "FALSE"){print(fdphat)}
+      if(mute == "FALSE"){print(fdphat)}
       if(fdphat<=fdr){break}
     }
     rej = which(W>=tau)

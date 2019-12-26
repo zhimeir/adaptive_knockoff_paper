@@ -1,49 +1,3 @@
-#' Adaptive Knockoff Filter With Random Forest
-#'
-#' filter_glm returns a set of rejections with FDR controlled at custom target
-#'
-#' @param W vector of length p, denoting the imporatence statistics calculated by \code{\link[knockoff]{knockoff.filter}}.
-#' @param z p-by-r matrix of side information.
-#' @param alpha target FDR level (default is 0.1).
-#' @param offset either 0 or 1 (default: 1). The offset used to compute the rejection threshold on the statistics. For details, see \code{\link[knockoff]{knockoff.threshold}}.
-#' @param reveal_prop The proportion of hypotheses revealed at intialization (default is 0.5).
-#' @param mute whether \eqn{\hat{fdp}} of each iteration is printed (defalt is TRUE).
-#'
-#' @return A list of the following:
-#'  \item{nrejs}{The number of rejections for each specified target fdr (alpha) level}.
-#'  \item{rejs}{Rejsction set fot each specified target fdr (alpha) level}.
-#'  \item{rej.path}{The order of the hypotheses (used for diagnostics)}.
-#'  \item{unrevealed.id}{id of the hypotheses that are nor revealed in the end (used for diagnostics)}.
-#'  \item{tau}{Threshold of each target FDR level (used for diagnostics)}.
-#'  \item{acc}{The accuracy of classfication at each step (used for diagnostics)}.
-#'
-#'
-#'
-#' @family filter
-#'
-#' @examples
-#' #Generating data
-#' p=100;n=100;k=40;
-#' mu = rep(0,p); Sigma = diag(p)
-#' X = matrix(rnorm(n*p),n)
-#' nonzero = 1:k
-#' beta = 5*(1:p%in%nonzero)*sign(rnorm(p))/ sqrt(n)
-#' y = X%*%beta + rnorm(n,1)
-#'
-#' #Generate knockoff copy
-#' Xk = create.gaussian(X,mu,Sigma)
-#'
-#' #Gnerate importance statistic using knockoff package
-#' W = stat.glmnet_coefdiff(X,Xk,y)
-#'
-#' #Using filer_gam to obtain the final rejeciton set
-#' z = 1:p #Use the location of the hypotheses as the side information
-#' result = filter_glm(W,z)
-#'
-
-#' @export
-
-
 filter_randomForest <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
 
   #Check the input format
@@ -88,9 +42,7 @@ filter_randomForest <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute =
   revealed_sign = rep(1,p)
   all_id = 1:p
   tau.sel = c()
-  acc = c()
-
-
+  
   #Reveal a small proportion of W
   revealed_id = which(W_abs<=quantile(W_abs,reveal_prop))
 
@@ -110,9 +62,7 @@ filter_randomForest <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute =
       mdl = randomForest(y = as.factor(revealed_sign),x = cbind(W_abs,z),norm.votes = TRUE,ntree = 1000)
       fitted.pval = mdl$votes[,ncol(mdl$votes)]
       fitted.pval = fitted.pval[unrevealed_id]
-      predicted.sign = fitted.pval>0.5
-      acc = c(acc, sum(predicted.sign == W_sign[unrevealed_id])/length(unrevealed_id))
-
+      
       #Reveal the W_j with smallest probability of being a positive
       ind.min = which(fitted.pval == min(fitted.pval))
       if(length(ind.min)==1){
@@ -137,7 +87,7 @@ filter_randomForest <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute =
     tau.sel = c(tau.sel, length(revealed_id))
   }
 
-  result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,acc = acc,W=W,alpha = alpha)
+  result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,W=W,alpha = alpha)
   return(result)
 }
 
