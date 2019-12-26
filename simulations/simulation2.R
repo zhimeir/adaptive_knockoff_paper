@@ -5,6 +5,7 @@ ParamsRowIndex <- as.integer(args[1])
 if(is.na(ParamsRowIndex)==1){
   ParamsRowIndex = 1 
 }
+print(ParamsRowIndex)
 ####################################
 ## Libraries and sources
 ####################################
