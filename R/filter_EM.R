@@ -134,13 +134,13 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       ind.reveal = unrevealed_id[ind.reveal]
       revealed_id = c(revealed_id,ind.reveal)
       unrevealed_id = all_id[-revealed_id]
+      W_revealed[ind.reveal] = W[ind.reveal]
+      t = logis(W_revealed)
       rej.path = c(rej.path,ind.reveal)
       tau[ind.reveal] =  W_abs[ind.reveal]+1
       fdphat = calculate.fdphat(W,tau,offset = offset)
       if(mute == FALSE) print(fdphat)
       if(fdphat<=fdr | fdphat ==Inf){break}
-      W_revealed[ind.reveal] = W[ind.reveal]
-      t = logis(W_revealed)
     }
 
     #Check if the estimated FDR is below the target FDR threshold
@@ -182,24 +182,14 @@ dens  <- function(t,mu,delta){
 prob_revealed <- function(pi,mu0,mu1,t,delta0,delta1){
   num = pi*dens(t,mu1,delta1)
   denom = pi*dens(t,mu1,delta1) + (1-pi)*dens(t,mu0,delta0)
-  if(denom == 0 ){value =0.5}else{value = num/denom}
+  if(denom==0){value=0.5}else{value = num/denom}#avoid numerical errors
   return(value)
 }
 
 prob_unrevealed <- function(pi,mu0,mu1,t,delta0,delta1){
   num = pi*dens(t,mu1,delta1) +pi*dens(1-t,mu1,delta1)
   denom = num +(1-pi)*dens(t,mu0,delta0) +(1-pi)*dens(1-t,mu0,delta0)
-  if((denom) ==0){value = 0.5}else{value = num/denom}
-  return(value)
-}
-
-
-exp_unrevealed_1 <- function(pi,mu0,mu1,t,delta0,delta1){
-  y1  = -log(t)
-  y2 = -log(1-t)
-  num = y1 * pi *dens(t,mu1,delta1) + y2*pi*dens(1-t,mu1,delta1)
-  denom =pi *dens(t,mu1,delta1) +pi*dens(1-t,mu1,delta1) +(1-pi)*dens(t,mu0,delta0) +(1-pi)*dens(1-t,mu0,delta0)
-  if(denom ==0){value = (y1+y2)/2}else{value = num/denom}
+  if(denom==0){value=0.5}else{value = num/denom}#avoid numerical errors
   return(value)
 }
 
@@ -208,7 +198,16 @@ exp_unrevealed_0 <- function(pi,mu0,mu1,t,delta0,delta1){
   y2 = -log(1-t)
   num = y1 *( 1-pi) *dens(t,mu0,delta0) + y2*(1-pi)*dens(1-t,mu0,delta0)
   denom =pi *dens(t,mu1,delta1) +pi*dens(1-t,mu1,delta1) +(1-pi)*dens(t,mu0,delta0) +(1-pi)*dens(1-t,mu0,delta0)
-  if(denom ==0){value = (y1+y2)/2}else{value = num/denom}
+  if(denom ==0){value = (y1+y2)/2}else{value = num/denom}#avoid numerical errors
+  return(value)
+}
+
+exp_unrevealed_1 <- function(pi,mu0,mu1,t,delta0,delta1){
+  y1  = -log(t)
+  y2 = -log(1-t)
+  num = y1*pi*dens(t,mu1,delta1) + y2*pi*dens(1-t,mu1,delta1)
+  denom =pi*dens(t,mu1,delta1) +pi*dens(1-t,mu1,delta1) +(1-pi)*dens(t,mu0,delta0) +(1-pi)*dens(1-t,mu0,delta0)
+  if(denom ==0){value = (y1+y2)/2}else{value = num/denom}#avoid numerical errors
   return(value)
 }
 
@@ -219,7 +218,7 @@ order_prob <- function(pi,mu0,mu1,t,delta0,delta1){
   h01 = delta0*(t==1/2)+(1-delta0)*(t!=1/2)*(t^{1/mu0-1}/mu0)
   h00 = delta0*(t==1/2)+(1-delta0)*(t!=1/2)*((1-t)^{1/mu0-1}/mu0)
   num = pi*h11
-  denom = pi*h11+pi*h10 +(1-pi)*(h00+h01)
-  if(denom ==0){value =0.5}else{value = num/denom}
+  denom = pi*h11+pi*h10+(1-pi)*(h00+h01)
+  if(denom ==0){value =0.5}else{value = num/denom}#avoid numerical errors
   return(value)
 }
