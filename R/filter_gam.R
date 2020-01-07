@@ -59,7 +59,7 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
       if(dim(z)[2]==1){
         mdl  =gam(revealed_sign~ns(z,df) + abs(W),family = "binomial")
       }else{
-        mdl  =gam(revealed_sign~ s(z,abs(W)),family = "binomial")
+        mdl  =gam(revealed_sign~ ns(z[,1],df) + ns(z[,2],df)+abs(W),family = "binomial")
       }
       fitted.pval = mdl$fitted.values[unrevealed_id]
       
