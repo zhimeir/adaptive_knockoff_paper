@@ -90,11 +90,11 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
           if(dim(U)[2] ==1){
             #mdl = gam(log(H/(1-H))~ns(U,df))
             mdl = gam(H~ns(U,df),family = "binomial")
-            pi = logis(mdl$fitted.values)
+            pi = mdl$fitted.values
           }else{
             #mdl = gam(log(H/(1-H))~s(U[,1],U[,2]))
             mdl = gam(H~s(U[,1],U[,2]),family="binomial")
-            pi = logis(mdl$fitted.values)
+            pi = mdl$fitted.values
           }
           
           #update beta_0
