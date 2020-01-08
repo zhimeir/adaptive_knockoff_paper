@@ -1,17 +1,17 @@
-filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-3,cutoff = NULL){
+filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-3){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
   }else{
     stop('W is not a numeric vector')
   }
-
+  
   if(is.numeric(U) ==1){
     U = as.matrix(U)
   }else{
     stop('U is not numeric')
   }
-
+  
   #Extract dimensionality
   p = length(W)
   
@@ -35,15 +35,15 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
   nrejs =  rep(0,length(alpha)) #number of rejections
   ordered_alpha = sort(alpha,decreasing = TRUE) #ordered target levels: from the largest to the smallest
   rej.path = c()
-
-
+  
+  
   # Algorithm initialization
   eps = 1e-10
   W_abs = abs(W)
   W_revealed = W_abs
   tau = rep(s0,p)# Reveal a small amount of signs based on magnitude only
   revealed_id = which(W_abs<=tau)
-
+  
   if (length(revealed_id)>0)
   {unrevealed_id =all_id[-revealed_id]
   W_revealed[revealed_id] = W[revealed_id]
@@ -52,7 +52,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
   }else{
     unrevealed_id = all_id
   }
-
+  
   pi = rep(sum(W>0)/p,p)
   delta0 = sum(W==0)/p*(1-mean(pi))
   delta1 = sum(W==0)/p*(mean(pi))
@@ -64,7 +64,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
   H = rep(eps,p)
   y0 = -log(t)
   y1 = -log(t)
-
+  
   for (talpha in 1:length(alpha)){
     fdr = ordered_alpha[talpha]
     for (i in 1:length(unrevealed_id)){
@@ -75,7 +75,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
         H[revealed_id] = sapply(1:length(revealed_id),function(j) prob_revealed(pi[revealed_id[j]],mu_0[revealed_id[j]],mu_1[revealed_id[j]],t[revealed_id[j]],delta0,delta1))
         y1[revealed_id] = -log(t[revealed_id])
         y0[revealed_id] = -log(t[revealed_id])
-
+        
         # unrevealed part
         H[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) prob_unrevealed(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
         H = pmax(H,eps) #avoid numerical errors
@@ -84,15 +84,13 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
         y0[unrevealed_id] = sapply(1:length(unrevealed_id),function(j) exp_unrevealed_0(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))/(1-H[unrevealed_id])
         
         # M step
-        if(is.null(cutoff) == TRUE){cutoff=p}
-        if(length(unrevealed_id)<cutoff){
           #update nu
           if(dim(U)[2] ==1){
-            mdl = gam(H~ns(U,df),family = "binomial")
-            pi = mdl$fitted.values
+            mdl = gam(log(H/(1-H))~ns(U,df))
+            pi = logis(mdl$fitted.values)
           }else{
-            mdl = gam(H~s(U[,1],U[,2]),family="binomial")
-            pi = mdl$fitted.values
+            mdl = gam(log(H/(1-H))~s(U[,1],U[,2]))
+            pi = logis(mdl$fitted.values)
           }
           
           #update beta_0
@@ -101,28 +99,20 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
             mdl =gam(y0[t!=1/2]~s(U[t!=1/2,1],U[t!=1/2,2]),weights = (1-H[t!=1/2]),family = Gamma(link = "log"))
           }
           mu_0[t!=1/2] =mdl$fitted.values
-
+          
           #update beta_1
           if(dim(U)[2]==1){mdl =gam(y1[t!=1/2]~ns(U[t!=1/2],df),weights = (H[t!=1/2]),family = Gamma(link = "log"))
           }else{
             mdl =gam(y1[t!=1/2]~s(U[t!=1/2,1],U[t!=1/2,2]),weights = (H[t!=1/2]),family = Gamma(link = "log"))
           }
           mu_1[t!=1/2] =mdl$fitted.values
-        }else{
-          mdl = randomForest(y= H,x=as.matrix(U))
-          pi = mdl$predicted
-          mdl = randomForest(y = y0[t!=1/2],x= as.matrix(U[t!=1/2,]))
-          mu_0[t!=1/2] =mdl$predicted
-          mdl = randomForest(y = y1[t!=1/2],x= as.matrix(U[t!=1/2,]))
-          mu_1[t!=1/2] =mdl$predicted
-        }
         
         #update delta
         delta0 = sum((1-H)*(t==1/2))/(sum((1-H)*(t==1/2))+sum((1-H)*(t!=1/2)))
         delta1 = sum((H)*(t==1/2))/(sum((H)*(t==1/2))+sum((H)*(t!=1/2)))
       }
-
-
+      
+      
       horder = sapply(1:length(unrevealed_id),function(j) order_prob(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
       ind.min = which(horder == min(horder))
       if(length(ind.min)==1){
@@ -130,7 +120,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       }else{
         ind.reveal = ind.min[which.min(W_abs[ind.min])]
       }
-
+      
       ind.reveal = unrevealed_id[ind.reveal]
       revealed_id = c(revealed_id,ind.reveal)
       unrevealed_id = all_id[-revealed_id]
@@ -142,7 +132,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
       if(mute == FALSE) print(fdphat)
       if(fdphat<=fdr | fdphat ==Inf){break}
     }
-
+    
     #Check if the estimated FDR is below the target FDR threshold
     if(fdphat<=fdr){
       rej = which(W>=tau)
@@ -152,9 +142,9 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
     }else{
       break
     }
-
+    
   }
-
+  
   result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,W=W)
   return(result)
 }
