@@ -181,7 +181,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with EM algorithm
 ####################################
-res = filter_EM(W,z,alpha =alphalist,offset=1,s0=0.01,df=2,mute=FALSE)
+res = filter_EM(W,z,alpha =alphalist,offset=1,s0=0.01,cutoff = 0)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist )){
