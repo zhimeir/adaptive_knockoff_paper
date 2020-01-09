@@ -135,7 +135,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with gam
 ####################################
-res = filter_gam(W,z,alpha =alphalist,offset=1,df=10)
+res = filter_gam(W,z,alpha =alphalist,offset=1,df=5,reveal_prop = 0.2)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
