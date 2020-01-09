@@ -1,4 +1,4 @@
-filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
+filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.1,mute = TRUE){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
@@ -44,7 +44,7 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = 
   tau.sel = c()
   
   #Reveal a small proportion of W
-  revealed_id = which(W_abs<=quantile(W_abs,reveal_prop))
+  revealed_id = which(W_abs<=quantile(W_abs[which(W_abs>0)],reveal_prop))
 
   #Update the revealed information
   revealed_sign[revealed_id] = W_sign[revealed_id]
