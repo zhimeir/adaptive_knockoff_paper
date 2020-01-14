@@ -53,14 +53,20 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,s0 = 5e-
     unrevealed_id = all_id
   }
 
-  pi = rep(sum(W>0)/p,p)
-  delta0 = sum(W==0)/p*(1-mean(pi))
-  delta1 = sum(W==0)/p*(mean(pi))
+  #pi = rep(sum(W>0)/p,p)
+  #delta0 = sum(W==0)/p*(1-mean(pi))
+  #delta1 = sum(W==0)/p*(mean(pi))
+  #mu_0 =  rep(-log(logis(mean(W_abs[W<0]))),p)
+  #mu_1 = rep(-log(logis(mean(W_abs[W>0]))),p)
+  #mu_1[W==0] = log(2)
+  #mu_0[W==0] = log(2)
+  
+  pi = rep(sum(W!=0)/p,p)
+  delta0 = sum(W==0)/p
+  delta1 = sum(W==0)/p
   t = logis(W_revealed)
-  mu_0 =  rep(-log(logis(mean(W_abs[W<0]))),p)
-  mu_1 = rep(-log(logis(mean(W_abs[W>0]))),p)
-  mu_1[W==0] = log(2)
-  mu_0[W==0] = log(2)
+  mu_1 = log(2)
+  mu_0 = log(2)
   H = rep(eps,p)
   y0 = -log(t)
   y1 = -log(t)
