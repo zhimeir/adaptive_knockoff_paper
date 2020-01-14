@@ -1,4 +1,4 @@
-filter_glm <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
+filter_glm <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.1,mute = TRUE){
 
   #Check the input format
   if(is.numeric(W)){
