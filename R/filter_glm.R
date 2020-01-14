@@ -46,7 +46,8 @@ filter_glm <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
   
 
   #Reveal a small proportion of W
-  revealed_id = which(W_abs<=quantile(W_abs,reveal_prop))
+  s0 = quantile(W_abs[W_abs!=0],reveal_prop)
+  revealed_id = which(W_abs<=s0)
 
   #Update the revealed information
   revealed_sign[revealed_id] = W_sign[revealed_id]

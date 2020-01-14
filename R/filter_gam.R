@@ -1,4 +1,4 @@
-filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.1,mute = TRUE){
+filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.5,mute = TRUE){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)

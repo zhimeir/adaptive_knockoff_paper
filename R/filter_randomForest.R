@@ -44,7 +44,7 @@ filter_randomForest <- function(W,z,alpha =0.1,offset=1,reveal_prop = 0.5,mute =
   tau.sel = c()
   
   #Reveal a small proportion of W
-  revealed_id = which(W_abs<=quantile(W_abs,reveal_prop))
+  revealed_id = which(W_abs<=quantile(W_abs[W_abs!=0],reveal_prop))
 
   #Update the revealed information
   revealed_sign[revealed_id] = W_sign[revealed_id]
