@@ -1,4 +1,4 @@
-filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_prop = 0.5,cutoff = NULL){
+filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_prop = 0.1,cutoff = NULL){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
