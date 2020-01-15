@@ -1,4 +1,4 @@
-filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL){
+filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,reveal_prop = 0.1){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
@@ -41,7 +41,7 @@ filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL
   eps = 1e-10
   W_abs = abs(W)
   W_revealed = W_abs
-  #s0 = quantile(abs(W[W!=0]),reveal_prop)
+  s0 = quantile(abs(W[W!=0]),reveal_prop)
   tau = rep(s0,p)# Reveal a small amount of signs based on magnitude only
   revealed_id = which(W_abs<=tau)
   
