@@ -1,4 +1,4 @@
-filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,S0=NULL){
+filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL){
   #Check the input format
   if(is.numeric(W)){
     W = as.vector(W)
