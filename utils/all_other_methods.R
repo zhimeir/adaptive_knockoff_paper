@@ -1,5 +1,5 @@
 ### set up all methods
-
+# adapted from https://github.com/lihualei71/adaptPaper/blob/master/R/other_methods.R
 
 BH_method = function(pvals,alpha){
   khat=max(c(0,which(sort(pvals)<=alpha*(1:length(pvals))/length(pvals))))
@@ -33,24 +33,3 @@ Adaptive_SeqStep_method = function(pvals, alpha, thr1, thr2){ # Lei & Fithian 20
 
 }
 
-
-#num_alpha=length(alphalist); max_alpha = max(alphalist)
-
-# gather results
-#NumRej = array(0,c(7,num_alpha,3))
-# methods: 1 SeqStep, 2 HingeExp, 3 ForwardStop, 4 Adaptive SeqStep, 5 BH, 6 Storey-BH, 7 SABHA
-#for(j in 1:3){
-#  if(j==1){pvals=output$pvals[output$ord]}else{if(j==2){pvals=output$pvals[output$ord_small]}else{pvals=output$pvals[output$ord_random]}}
-#  qhat = Solve_q_step(pvals,tau,eps)
-#  for(i in 1:num_alpha){
-#    NumRej[1,i,j] = SeqStep(pvals,alpha=alphalist[i],C=2)
-#    NumRej[2,i,j] = HingeExp(pvals*(1-1/(1+choose(10,5))),alpha=alphalist[i],C=2)
-#    NumRej[3,i,j] = ForwardStop(pvals*(1-1/(1+choose(10,5))),alpha=alphalist[i])
-#    NumRej[4,i,j] = length(Adaptive_SeqStep_method(pvals, alphalist[i], thr1, thr2))
-#    NumRej[5,i,j] = length(BH_method(pvals, alphalist[i]))
-#    NumRej[6,i,j] = length(Storey_method(pvals, alphalist[i], thr))
-#    NumRej[7,i,j] = length(SABHA_method(pvals, qhat, alphalist[i], tau))
-#  }
-#}
-
-#gene_drug_plot_results(NumRej,'gene_drug_results.pdf')

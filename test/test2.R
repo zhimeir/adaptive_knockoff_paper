@@ -48,16 +48,16 @@ p = 900
 k = 150
 
 alphalist = seq(0.3,0.01,-0.01)
-rho = 0.5
+rho = 0
 
 Sigma = toeplitz(rho^(0:(p-1)))
-amp = 0
+amp = 3.5
 sigprob = rep(0,p)
 sigprob[1:300] = 1/(1:300)^2/(sum(1/(1:300)^2))
 nonzero = sample(1:p,k,prob = sigprob)
 beta0 = amp * (1:p %in% nonzero)*sign(rnorm(p)) / sqrt(n)
 y.sample = function(X) X%*%beta0+rnorm(n,0,1)
-settingName = "./results/test1"
+settingName = "./results/test2"
 
 ####################################
 ## HMM parameters
