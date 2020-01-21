@@ -195,7 +195,7 @@ writeMat(savedir, power = power, fdp = fdp,W = W,nonzero = nonzero)
 ####################################
 ## Adaknockoff with glm
 ####################################
-res = filter_glm(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
+res = filter_glm(W,z,alpha =alphalist,offset=1)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
@@ -242,7 +242,7 @@ writeMat(savedir,fdp = fdp,power = power,res = res)
 ####################################
 ## Adaknockoff with random forest
 ####################################
-res = filter_randomForest(W,z,alpha =alphalist,offset=1,reveal_prop = 0.8)
+res = filter_randomForest(W,z,alpha =alphalist,offset=1)
 fdp = c()
 power = c()
 for (i in 1:length(alphalist)){
