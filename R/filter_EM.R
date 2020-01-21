@@ -28,7 +28,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_p
   # dimention of the side information
   pz = dim(U)[2]
   
-  # Initializing the output
+  # Set up the output
   all_id = 1:p
   tau.sel = c() #stopping time
   rejs = vector("list",length(alpha)) #rejection sets
@@ -37,30 +37,26 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_p
   rej.path = c()
 
 
-  # Algorithm initialization
-  eps = 1e-10
+  # filter initialization
   W_abs = abs(W)
   W_revealed = W_abs
-  s0 = quantile(abs(W[W!=0]),reveal_prop)
-  tau = rep(s0,p)# Reveal a small amount of signs based on magnitude only
-  revealed_id = which(W_abs<=tau)
+  tau = W_abs
+  if(length(W[W!=0]) == 0){s0=Inf}else{s0 = quantile(abs(W[W!=0]),reveal_prop)}
+  
+  # Reveal a small amount of signs based on magnitude only
+  revealed_id = which(W_abs<=s0)
 
   if (length(revealed_id)>0)
   {unrevealed_id =all_id[-revealed_id]
   W_revealed[revealed_id] = W[revealed_id]
   rej.path = c(rej.path,revealed_id)
-  
+  tau[revealed_id] =  W_abs[revealed_id]+1
   }else{
     unrevealed_id = all_id
   }
-
-  #delta0 = sum(W==0)/p*(1-mean(pi))
-  #delta1 = sum(W==0)/p*(mean(pi))
-  #mu_0 =  rep(-log(logis(mean(W_abs[W<0]))),p)
-  #mu_1 = rep(-log(logis(mean(W_abs[W>0]))),p)
-  #mu_1[W==0] = log(2)
-  #mu_0[W==0] = log(2)
   
+  # EM initialization
+  eps = 1e-10
   pi = rep(sum(W>0)/p,p)
   delta0 = sum(W==0)/p*sum(W<=0)/p
   delta1 = sum(W==0)/p*sum(W>0)/p
@@ -73,9 +69,15 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_p
   y0 = -log(t)
   y1 = -log(t)
 
+  # compute estimated FDR 
+  fdphat = calculate.fdphat(W,tau,offset = offset)
+  if(mute == FALSE) print(fdphat)
+  
+  # run filter
   for (talpha in 1:length(alpha)){
     fdr = ordered_alpha[talpha]
-    for (i in 1:length(unrevealed_id)){
+    while(fdphat>fdr && length(unrevealed_id)>=1){
+      
       # EM algorithm
       for (r in 1:R){
         # E step
@@ -129,8 +131,7 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_p
         delta0 = sum((1-H)*(t==1/2))/(sum((1-H)*(t==1/2))+sum((1-H)*(t!=1/2)))
         delta1 = sum((H)*(t==1/2))/(sum((H)*(t==1/2))+sum((H)*(t!=1/2)))
       }
-
-
+      
       horder = sapply(1:length(unrevealed_id),function(j) order_prob(pi[unrevealed_id[j]],mu_0[unrevealed_id[j]],mu_1[unrevealed_id[j]],t[unrevealed_id[j]],delta0,delta1))
       ind.min = which(horder == min(horder))
       if(length(ind.min)==1){
@@ -146,23 +147,21 @@ filter_EM <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df = 3,R=1,reveal_p
       t = logis(W_revealed)
       rej.path = c(rej.path,ind.reveal)
       tau[ind.reveal] =  W_abs[ind.reveal]+1
+      
+      # compute estimated FDR
       fdphat = calculate.fdphat(W,tau,offset = offset)
       if(mute == FALSE) print(fdphat)
-      if(fdphat<=fdr | fdphat ==Inf){break}
     }
 
-    #Check if the estimated FDR is below the target FDR threshold
-    if(fdphat<=fdr){
+    # determine selection set
       rej = which(W>=tau)
       rejs[[talpha]] = rej
       nrejs[talpha] = length(rej)
       tau.sel = c(tau.sel, length(revealed_id))
-    }else{
-      break
-    }
-
+    
   }
 
+  # collect results
   result = list(rejs = rejs,fdphat = fdphat,nrejs = nrejs,rej.path = c(rej.path,unrevealed_id),unrevealed_id = unrevealed_id,tau = tau.sel,W=W)
   return(result)
 }

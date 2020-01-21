@@ -34,17 +34,18 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.1,mute = 
   #Initilization
   rejs = list()
   nrejs = rep(0,length(alpha))
-  tau = rep(0,p)
   ordered_alpha = sort(alpha,decreasing = TRUE)
   rej.path = c()
   W_abs = abs(W)
+  tau = W_abs
   W_sign = as.numeric(W>0)
   revealed_sign = rep(1,p)
   all_id = 1:p
   tau.sel = c()
   
   #Reveal a small proportion of W
-  revealed_id = which(W_abs<=quantile(W_abs[which(W_abs>0)],reveal_prop))
+  if(length(W[W!=0]) == 0){s0=Inf}else{s0 = quantile(abs(W[W!=0]),reveal_prop)}
+  revealed_id = which(W_abs<=s0)
 
   #Update the revealed information
   revealed_sign[revealed_id] = W_sign[revealed_id]
@@ -52,10 +53,14 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.1,mute = 
   tau[revealed_id] = W_abs[revealed_id]+1
   rej.path = c(rej.path,revealed_id)
 
+  # compute the estimated FDR
+  fdphat = calculate.fdphat(W,tau,offset = offset)
+  if (mute == "FALSE"){print(fdphat)}
+  
   #Iteratively reveal hypotheses; the order determined by glmnet
   for (talpha in 1:length(alpha)){
     fdr = ordered_alpha[talpha]
-    for (i in 1:length(unrevealed_id)){
+    while(fdphat>fdr && length(unrevealed_id)>=1){
       if(dim(z)[2]==1){
         mdl  =gam(revealed_sign~ns(z,df) + abs(W),family = "binomial")
       }else{
@@ -77,10 +82,12 @@ filter_gam <- function(W,z,df = 5, alpha =0.1,offset=1,reveal_prop = 0.1,mute = 
       unrevealed_id = all_id[-revealed_id]
       revealed_sign[ind.reveal] = W_sign[ind.reveal]
       tau[ind.reveal] =  W_abs[ind.reveal]+1
+      
+      # compute estimated FDR
       fdphat = calculate.fdphat(W,tau,offset = offset)
       if(mute == "FALSE"){print(fdphat)}
-      if(fdphat<=fdr){break}
     }
+    
     rej = which(W>=tau)
     rejs[[talpha]] = rej
     nrejs[talpha] = length(rej)
