@@ -41,26 +41,17 @@ filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL
   eps = 1e-10
   W_abs = abs(W)
   W_revealed = W_abs
-  #s0 = quantile(abs(W[W!=0]),reveal_prop)
-  tau = rep(s0,p)# Reveal a small amount of signs based on magnitude only
-  revealed_id = which(W_abs<=tau)
+  tau = W_abs
+  revealed_id = which(W_abs<=s0)# Reveal a small amount of signs based on magnitude only
   
   if (length(revealed_id)>0)
   {unrevealed_id =all_id[-revealed_id]
   W_revealed[revealed_id] = W[revealed_id]
   rej.path = c(rej.path,revealed_id)
-  
+  tau[revealed_id] =  W_abs[revealed_id]+1
   }else{
     unrevealed_id = all_id
   }
-  
-  # pi = rep(sum(W>0)/p,p)
-  # delta0 = sum(W==0)/p*(1-mean(pi))
-  # delta1 = sum(W==0)/p*(mean(pi))
-  # mu_0 =  rep(-log(logis(mean(W_abs[W<0]))),p)
-  # mu_1 = rep(-log(logis(mean(W_abs[W>0]))),p)
-  # mu_1[W==0] = log(2)
-  # mu_0[W==0] = log(2)
   
   pi = rep(sum(W>0)/p,p)
   delta0 = sum(W==0)/p*sum(W<=0)/p
@@ -74,9 +65,13 @@ filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL
   y0 = -log(t)
   y1 = -log(t)
   
+  # compute estimated FDR 
+  fdphat = calculate.fdphat(W,tau,offset = offset)
+  if(mute == FALSE) print(fdphat)
+  
   for (talpha in 1:length(alpha)){
     fdr = ordered_alpha[talpha]
-    for (i in 1:length(unrevealed_id)){
+    while(fdphat>fdr && length(unrevealed_id)>=1){
       # EM algorithm
       for (r in 1:R){
         # E step
@@ -137,20 +132,18 @@ filter_GWAS <- function(W,U,alpha = 0.1,offset = 1,mute = TRUE,df =3,R=1,s0=NULL
       t = logis(W_revealed)
       rej.path = c(rej.path,ind.reveal)
       tau[ind.reveal] =  W_abs[ind.reveal]+1
+      
+      # compute estimated FDR
       fdphat = calculate.fdphat(W,tau,offset = offset)
       if(mute == FALSE) print(fdphat)
-      if(fdphat<=fdr | fdphat ==Inf){break}
     }
     
-    #Check if the estimated FDR is below the target FDR threshold
-    if(fdphat<=fdr){
+    # determine selection set
       rej = which(W>=tau)
       rejs[[talpha]] = rej
       nrejs[talpha] = length(rej)
       tau.sel = c(tau.sel, length(revealed_id))
-    }else{
-      break
-    }
+    
     
   }
   
