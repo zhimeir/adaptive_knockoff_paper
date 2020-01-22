@@ -48,8 +48,6 @@ p = 900
 k = 150
 
 alphalist = seq(0.3,0.01,-0.01)
-rho = 0
-
 Sigma = toeplitz(rho^(0:(p-1)))
 amp = 3.5
 sigprob = rep(0,p)
@@ -60,24 +58,10 @@ y.sample = function(X) X%*%beta0+rnorm(n,0,1)
 settingName = "./results/test2"
 
 ####################################
-## HMM parameters
-####################################
-# Number of possible states for each variable
-K=5;M=3;  
-# Marginal distribution for the first variable
-pInit = rep(1/K,K)
-# Create p-1 transition matrices
-Q = array(stats::runif((p-1)*K*K),c(p-1,K,K))
-for(j in 1:(p-1)) { Q[j,,] = Q[j,,] / rowSums(Q[j,,]) }
-pEmit = array(stats::runif(p*M*K),c(p,M,K))
-for(j in 1:p) { pEmit[j,,] = pEmit[j,,] / rowSums(pEmit[j,,]) }
-
-
-####################################
 ## Generating data
 ####################################
 set.seed(ParamsRowIndex)
-X = sampleHMM(pInit, Q, pEmit, n=n)
+X = matrix(rnorm(n*p),n) 
 y = y.sample(X)
 
 ####################################
@@ -172,7 +156,7 @@ writeMat(savedir, power = power, fdp = fdp,nonzero = nonzero)
 ####################################
 ## Vanilla  knockoff
 ####################################
-Xk = knockoffHMM(X, pInit, Q,pEmit,seed = ParamsRowIndex+24601)
+Xk = knockoff::create.gaussian(X,Sigma = diag(rep(1,p)),mu = rep(0,p))
 mdl = cv.glmnet(cbind(X,Xk),y,alpha=1)
 cvlambda = mdl$lambda.min
 beta = mdl$glmnet.fit$beta[,mdl$lambda ==mdl$lambda.min]
